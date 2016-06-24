@@ -1,0 +1,4 @@
+#!/bin/bash
+
+niter=2
+nlabels=1

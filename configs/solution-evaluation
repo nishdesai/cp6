@@ -1,0 +1,4 @@
+#!/bin/bash
+
+niter=50000
+nlabels=24

@@ -1,0 +1,55 @@
+Solution Software Dependencies:
+    There are additional software dependencies required to run the CP6 solution. These dependencies
+    are necessary to handle the data io for the system.
+        - Python 2.7
+        - numpy: a matrix computing package for python
+
+
+run.sh assumptions:
+    The run.sh script makes the following assumptions about the input parameters:
+        - input_dir is a directory directly containing the image and edge tables. The solution assumes
+          that this directory is structured the same way as the round-2-public/run_in/testing/ directory
+          in the provided data. If this is not the correct input structure, changes should be made to generate.py.
+
+        - output_dir is a directory into which the solution will be placed. As the solution runs,
+        intermediate solutions will be updated in this directory. The name of the solution file is
+        image_table.csv
+
+
+Solution Steps (automated by run.sh):
+    - First, the solution uses generate.py to create a BLOG file for each inference problem. In this case,
+    one file for each of the 24 labels.
+
+        python2.7 generate.py <input_dir> <code_output_dir> <n, code for first n labels will be generated>
+
+    - The Blog code is then compiled into C++ code
+
+        ${ENGROOT}/swift -i <input_blog_filename> -o <output_cpp_filename> -e GibbsSampler -n <number of iterations, default: $niter>
+
+    - The C++ code is then compiled into a binary. This requires linking with the random directory, which describes the various
+    distributions supported by Swift. In addition, the random and util directories must be in the same directory as the binary
+    at runtime.
+
+        g++ -Ofast -std=c++11 <inference_cpp_filename> random/*.cpp -o <inference_binary_name> -larmadillo
+
+    - The generated binary is then executed, and the output is piped to a log file.
+
+    - The log file containing the inference output is then processed to extract a solution for the label that is
+    the target of inference. This solution will be written into output_dir, and it will also be written to a csv
+    file within /tmp.
+
+        python2.7 parse.py <inference_log_file> <label_file_in_tmp> <label_index> <output_dir>
+
+
+Solution Description:
+    The model for CP6 requires us to first infer a set of unknown parameter weights for each CRF. These weights,
+    computed beforehand, are found in the weights directory included in the solution. In experiments, we were able
+    to compute these weights using both gradient techniques (outside of Blog) and by MCMC sampling. Due to time and
+    performance constraints, the weights included here are the result of a gradient based solver.
+
+    After computing weights, we structure our program as a directed graphical model. In order to represent the undirected
+    binary potentials of the CRF model, we add a boolean node for each undirected edge. Its probability of being observed as
+    True is equal to the pairwise potential in the original model. By fixing the value of this variable to be True, the likelihood
+    of our directed model becomes equal to the likelihood of the CRF.
+
+    We then perform inference on the image nodes in our directed graph using Gibbs Sampling.

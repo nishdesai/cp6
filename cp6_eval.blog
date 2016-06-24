@@ -1,0 +1,31 @@
+
+
+// edges is a k x 2 matrix. k is the number of edges. The first column is the
+// index of the first node in the edge, and the second column is the second node.
+fixed RealMatrix edges = loadRealMatrix("edges.csv");
+fixed RealMatrix feats = loadRealMatrix("features.csv");
+
+type Image;
+type Edge;
+
+fixed Image toImage(Integer a) = a;
+random Real jitter ~ Gaussian(0, 0.001); //hack to tell swift that ImageLabel is a random quantity
+random Real ImageLabel(Image i) ~ Discrete([1.0+jitter; exp( toReal(getrow(feats, toInt(i)) * w))+jitter]);
+random Integer ImagePair(Edge e) ~ Bernoulli(
+  exp(
+    toReal(
+      ImageLabel(toImage( toInt( edges[toInt(e)][0] ) )) *
+      ImageLabel(toImage( toInt( edges[toInt(e)][1] ) )) *
+      toReal(getrow(feats, toInt( edges[toInt(e)][0] )) * v1) +
+      toReal(getrow(feats, toInt( edges[toInt(e)][1] )) * v2)
+    )
+  ) /
+  (exp(
+      toReal(
+        toReal(getrow(feats, toInt( edges[toInt(e)][0] )) * v1) +
+        toReal(getrow(feats, toInt( edges[toInt(e)][1] )) * v2)
+      )
+  ) + 3)
+);
+
+//Programmatically add "distinct" statements for Image and Edge.
